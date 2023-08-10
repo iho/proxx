@@ -117,3 +117,45 @@ func (field *ProxxField) ToString() string {
 	}
 	return result
 }
+
+// Direction offsets for adjacent cells
+var directions = []struct {
+	dx, dy int
+}{
+	{-1, -1}, {-1, 0}, {-1, 1},
+	{0, -1}, {0, 1},
+	{1, -1}, {1, 0}, {1, 1},
+}
+
+func (field *ProxxField) RevealCell(h, w int) {
+	queue := [][]int{{h, w}}
+
+	visited := make([][]bool, field.Height)
+	for i := range visited {
+		visited[i] = make([]bool, field.Width)
+	}
+
+	for len(queue) > 0 {
+		curr := queue[0]
+		queue = queue[1:]
+
+		ch, cw := curr[0], curr[1]
+		cell := field.Cells[ch][cw]
+
+		if visited[ch][cw] {
+			continue
+		}
+
+		visited[ch][cw] = true
+		cell.IsVisible = true
+
+		if cell.AdjacentCounter == 0 && !cell.IsBlackBomb {
+			for _, d := range directions {
+				nh, nw := ch+d.dx, cw+d.dy
+				if 0 <= nh && nh < field.Height && 0 <= nw && nw < field.Width && !visited[nh][nw] && !field.Cells[nh][nw].IsBlackBomb {
+					queue = append(queue, []int{nh, nw})
+				}
+			}
+		}
+	}
+}

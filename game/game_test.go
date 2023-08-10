@@ -177,3 +177,37 @@ func TestPopulateAdjacentCounters(t *testing.T) {
 		}
 	}
 }
+
+func TestRevealCell(t *testing.T) {
+	gameField, _ := game.NewProxxField(1, 3, 3) // Small 3x3 board with 1 black hole for easy testing
+
+	countVisibleCells := func() int {
+		count := 0
+		for i := range gameField.Cells {
+			for _, cell := range gameField.Cells[i] {
+				if cell.IsVisible {
+					count++
+				}
+			}
+		}
+		return count
+	}
+
+	assert.Equal(t, 0, countVisibleCells(), "Expected all cells to be hidden at start")
+
+	// Reveal a cell that's guaranteed not to be a black hole (since there's only 1 black hole)
+	gameField.RevealCell(0, 0)
+
+	assert.True(t, gameField.Cells[0][0].IsVisible, "Expected the clicked cell (0, 0) to be visible")
+
+	assert.LessOrEqual(t, 1, countVisibleCells(), "Expected more cells to be revealed due to cascading reveals")
+
+	// Finally, make sure the black hole itself is not revealed
+	for i := range gameField.Cells {
+		for j, cell := range gameField.Cells[i] {
+			if cell.IsBlackBomb && cell.IsVisible {
+				assert.Falsef(t, cell.IsVisible, "Black hole at (%d, %d) should not be revealed", i, j)
+			}
+		}
+	}
+}
