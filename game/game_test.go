@@ -68,9 +68,9 @@ func TestNewProxxField(t *testing.T) {
 
 func CountBlackHoles(field *game.ProxxField) int {
 	count := 0
-	for i := 0; i < field.Height; i++ {
-		for j := 0; j < field.Width; j++ {
-			if field.Cells[i][j].IsBlackBomb {
+	for h := 0; h < field.Height; h++ {
+		for w := 0; w < field.Width; w++ {
+			if field.Cells[h][w].IsBlackBomb {
 				count++
 			}
 		}
@@ -90,6 +90,89 @@ func TestPlaceBlackBombs(t *testing.T) {
 				assert.Nil(t, err, "must be no error")
 				assert.NotNil(t, field, "must be field")
 				assert.Equal(t, blackHolesNumber, CountBlackHoles(field))
+			}
+		}
+	}
+}
+
+func CheckBlackHoleAdjacentCounters(field *game.ProxxField) (*game.ProxxField, bool) {
+	// avoid boundchecks at cost of additional memory
+
+	cells := make([][]*game.CellsState, field.Height+2)
+	biggerField := &game.ProxxField{
+		BlackHolesNumber: 0,
+		Width:            field.Width + 2,
+		Height:           field.Height + 2,
+		Cells:            cells,
+	}
+	for h := 0; h < field.Height+2; h++ {
+		row := make([]*game.CellsState, field.Width+2)
+
+		for w := 0; w < field.Width+2; w++ {
+			row[w] = &game.CellsState{
+				IsBlackBomb:     false,
+				IsVisible:       false,
+				AdjacentCounter: 0,
+			}
+		}
+		cells[h] = row
+	}
+
+	for h := 0; h < field.Height; h++ {
+		for w := 0; w < field.Width; w++ {
+			cells[h+1][w+1] = field.Cells[h][w]
+		}
+	}
+	for h := 1; h < field.Height+1; h++ {
+		for w := 1; w < field.Width+1; w++ {
+			count := 0
+			if cells[h-1][w-1].IsBlackBomb {
+				count++
+			}
+			if cells[h-1][w].IsBlackBomb {
+				count++
+			}
+			if cells[h-1][w+1].IsBlackBomb {
+				count++
+			}
+			if cells[h][w-1].IsBlackBomb {
+				count++
+			}
+			if cells[h][w+1].IsBlackBomb {
+				count++
+			}
+			if cells[h+1][w-1].IsBlackBomb {
+				count++
+			}
+			if cells[h+1][w].IsBlackBomb {
+				count++
+			}
+			if cells[h+1][w+1].IsBlackBomb {
+				count++
+			}
+			if count != cells[h][w].AdjacentCounter {
+				return biggerField, false
+			}
+		}
+	}
+	return biggerField, true
+}
+
+func TestPopulateAdjacentCounters(t *testing.T) {
+	maxHeight := 10
+	maxWidth := 10
+	for height := 1; height <= maxHeight; height++ {
+		for width := 1; width <= maxWidth; width++ {
+			maxBlackHolesNumber := (height * width) - 1
+			for blackHolesNumber := 1; blackHolesNumber <= maxBlackHolesNumber; blackHolesNumber++ {
+				field, err := game.NewProxxField(blackHolesNumber, width, height)
+				assert.Nil(t, err, "must be no error")
+				assert.NotNil(t, field, "must be field")
+				biggerField, correct := CheckBlackHoleAdjacentCounters(field)
+				if !correct {
+					assert.Fail(t, "This field is incorrect: %s\n %s", field.ToString(), biggerField.ToString())
+					return
+				}
 			}
 		}
 	}
